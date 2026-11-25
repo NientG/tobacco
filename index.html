@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1E2428" id="theme-color-meta" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="喫煙記録" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>喫煙記録カウンター</title>
+  <style>
+    :root {
+      --bg-dark: #1E2428;
+      --bg-dark-card: #283036;
+      --bg-light: #F3F4F6;
+      --bg-white: #FFFFFF;
+      --accent-purple: #9B51E0;
+      --accent-purple-hover: #8638CE;
+      --accent-coral: #F06055;
+      --accent-yellow: #FDE047;
+      --accent-blue: #2563EB;
+      --accent-green: #059669;
+      --text-light: #F9FAFB;
+      --text-muted-dark: #9CA3AF;
+      --text-dark: #1F2937;
+      --text-muted-light: #6B7280;
+      --border-light: #E5E7EB;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 画面コンテナ */
+    .screen {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding-top: calc(var(--safe-top) + 12px);
+      padding-bottom: calc(84px + var(--safe-bottom));
+    }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 1. メイン画面（ダークテーマ） */
+    #screen-home {
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      justify-content: space-between;
+      align-items: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .home-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: var(--text-light);
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .icon-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .icon-btn:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .home-title-group {
+      text-align: center;
+    }
+    .home-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .home-date {
+      font-size: 16px;
+      color: #D1D5DB;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* 0時跨ぎバナー */
+    .midnight-banner {
+      background: rgba(155, 81, 224, 0.16);
+      border: 1px solid rgba(155, 81, 224, 0.45);
+      border-radius: 14px;
+      padding: 10px 16px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .midnight-banner-title {
+      font-size: 12px;
+      color: #D8B4FE;
+      font-weight: 600;
+    }
+    .midnight-banner-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-top: 2px;
+    }
+
+    /* メインカウンター数字 */
+    .counter-display-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: auto 0;
+    }
+    .counter-number {
+      font-size: 128px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .counter-number.pop {
+      transform: scale(1.12);
+    }
+    .counter-unit {
+      font-size: 15px;
+      color: var(--text-muted-dark);
+      margin-top: 6px;
+    }
+
+    /* 金額＆経過時間ステータス */
+    .home-stats {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #F3F4F6;
+    }
+    .stat-row svg {
+      color: #9CA3AF;
+      flex-shrink: 0;
+    }
+    .elapsed-sub {
+      text-align: center;
+      font-size: 12px;
+      color: #9CA3AF;
+      margin-top: -6px;
+    }
+
+    /* プラスボタン */
+    .plus-btn-wrap {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .plus-btn {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: var(--accent-purple);
+      border: none;
+      color: #FFFFFF;
+      font-size: 46px;
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(155, 81, 224, 0.45);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.15s;
+    }
+    .plus-btn:active {
+      transform: scale(0.91);
+      background: var(--accent-purple-hover);
+    }
+
+    /* ライトテーマ共通画面（履歴・分析・データ管理・設定） */
+    #screen-calendar, #screen-stats, #screen-data, #screen-settings {
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+
+    .page-header-bar {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin: 4px 2px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--bg-white);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+      margin-bottom: 14px;
+    }
+
+    /* カレンダーナビ */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .nav-arrow {
+      background: #F3F4F6;
+      border: none;
+      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-dark);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cal-month-title {
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text-muted-light);
+    }
+    .cal-weekdays span:first-child { color: #EF4444; }
+    .cal-weekdays span:last-child { color: #3B82F6; }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-cell {
+      aspect-ratio: 1 / 1.08;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 2px;
+      border: 2px solid transparent;
+      transition: background 0.15s;
+    }
+    .cal-cell.other-month {
+      opacity: 0.32;
+    }
+    .cal-cell.selected {
+      background-color: var(--accent-yellow);
+      border-color: #EAB308;
+    }
+    .cal-cell.today:not(.selected) {
+      border-color: var(--accent-coral);
+    }
+    .cal-day-num {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .cal-day-num.sun { color: #EF4444; }
+    .cal-day-num.sat { color: #3B82F6; }
+    .cal-count {
+      font-size: 16px;
+      font-weight: 800;
+      margin-top: 2px;
+      color: var(--text-dark);
+      font-variant-numeric: tabular-nums;
+    }
+    .cal-count.zero {
+      color: #9CA3AF;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    /* 金額サマリー4グリッド */
+    .cost-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-light);
+    }
+    .cost-box {
+      background: #F9FAFB;
+      border-radius: 10px;
+      padding: 8px 10px;
+      border: 1px solid #F3F4F6;
+    }
+    .cost-label {
+      font-size: 11px;
+      color: var(--text-muted-light);
+      font-weight: 600;
+    }
+    .cost-val {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-top: 2px;
+    }
+    .cost-sub {
+      font-size: 11px;
+      color: #6B7280;
+    }
+
+    /* 選択日の詳細ログ */
+    .day-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .day-detail-title {
+      font-size: 17px;
+      font-weight: 800;
+    }
+    .add-log-btn {
+      background: var(--accent-coral);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .log-table-header {
+      display: grid;
+      grid-template-columns: 44px 1fr 1fr 36px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted-light);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-light);
+      text-align: center;
+    }
+    .log-row {
+      display: grid;
+      grid-template-columns: 44px 1fr 1fr 36px;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid #F3F4F6;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .log-row:last-child {
+      border-bottom: none;
+    }
+    .log-idx {
+      color: var(--text-muted-light);
+      font-size: 14px;
+    }
+    .log-interval {
+      color: #374151;
+      font-size: 14px;
+    }
+    .del-log-btn {
+      background: none;
+      border: none;
+      color: #9CA3AF;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .del-log-btn:active {
+      color: #EF4444;
+    }
+    .empty-logs {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--text-muted-light);
+      font-size: 14px;
+    }
+
+    /* 分析画面（月・年） */
+    .segment-bar {
+      display: flex;
+      background: var(--bg-dark);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .segment-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: #9CA3AF;
+      padding: 10px 0;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .segment-btn.active {
+      background: var(--accent-coral);
+      color: #FFFFFF;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .chart-range-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 210px;
+      position: relative;
+      margin-top: 6px;
+    }
+    svg.bar-chart {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .calc-note {
+      font-size: 11px;
+      color: #6B7280;
+      background: #F3F4F6;
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .year-sub-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .sub-pill {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border-light);
+      background: #FFFFFF;
+      color: var(--text-muted-light);
+      cursor: pointer;
+    }
+    .sub-pill.active {
+      background: #1E2428;
+      color: #FFFFFF;
+      border-color: #1E2428;
+    }
+
+    .section-label {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 12px 0 8px;
+      color: var(--text-dark);
+    }
+
+    .stat-table {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-white);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-bottom: 14px;
+    }
+    .stat-table-head {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: var(--accent-coral);
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      padding: 8px 0;
+    }
+    .stat-table-head > div:not(:last-child) {
+      border-right: 1px solid rgba(255,255,255,0.3);
+    }
+    .stat-table-body {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      text-align: center;
+      padding: 14px 0;
+      font-size: 20px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-table-body > div:not(:last-child) {
+      border-right: 1px solid var(--border-light);
+    }
+    .stat-table-body small {
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 2px;
+    }
+
+    /* データ管理（JSON書き出し・読み込み専用タブ） */
+    .data-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .data-stat-box {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .data-stat-label {
+      font-size: 12px;
+      color: var(--text-muted-light);
+      font-weight: 600;
+    }
+    .data-stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-top: 4px;
+    }
+    .data-stat-sub {
+      font-size: 11px;
+      color: #6B7280;
+      margin-top: 4px;
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .action-btn:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    .action-btn.export-primary {
+      background: var(--accent-blue);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .action-btn.export-share {
+      background: #EFF6FF;
+      color: var(--accent-blue);
+      border: 1.5px solid #BFDBFE;
+      margin-top: 10px;
+    }
+    .action-btn.import-primary {
+      background: var(--accent-green);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+    }
+
+    .guide-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      font-size: 13px;
+      color: #4B5563;
+      line-height: 1.65;
+    }
+    .guide-list li {
+      margin-bottom: 4px;
+    }
+
+    .json-preview-toggle {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .json-preview-box {
+      display: none;
+      margin-top: 8px;
+      background: #1E2428;
+      color: #E5E7EB;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: text;
+    }
+    .json-preview-box.open {
+      display: block;
+    }
+
+    /* 設定画面 */
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text-dark);
+    }
+    .form-input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #D1D5DB;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      background: #F9FAFB;
+      color: var(--text-dark);
+    }
+    .primary-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent-purple);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ボトムナビゲーション（5タブ構成） */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(64px + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: #FFFFFF;
+      border-top: 1px solid #E5E7EB;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      z-index: 100;
+    }
+    .nav-item {
+      border: none;
+      background: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: #9CA3AF;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+    .nav-item.active {
+      color: var(--accent-coral);
+    }
+    .nav-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .nav-item.active .nav-icon-circle {
+      background: var(--accent-coral);
+      color: #FFFFFF;
+    }
+
+    /* モーダル */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-box {
+      background: #FFFFFF;
+      color: var(--text-dark);
+      border-radius: 18px;
+      padding: 20px;
+      width: 100%;
+      max-width: 350px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .modal-desc {
+      font-size: 14px;
+      color: #4B5563;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .modal-info-card {
+      background: #F3F4F6;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      color: #1F2937;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .modal-actions-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .modal-btn.cancel {
+      background: #F3F4F6;
+      color: #374151;
+    }
+    .modal-btn.confirm {
+      background: var(--accent-coral);
+      color: #FFFFFF;
+    }
+    .modal-btn.merge {
+      background: var(--accent-blue);
+      color: #FFFFFF;
+    }
+    .modal-btn.overwrite {
+      background: var(--accent-green);
+      color: #FFFFFF;
+    }
+
+    /* トースト通知 */
+    .toast {
+      position: fixed;
+      top: calc(var(--safe-top) + 16px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: rgba(17, 24, 39, 0.92);
+      color: #FFFFFF;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 300;
+      transition: transform 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="toast">記録しました</div>
+
+  <!-- 1. メイン画面（入力・カウント） -->
+  <section id="screen-home" class="screen active">
+    <div class="home-header">
+      <button class="icon-btn" onclick="switchTab('calendar')" title="履歴カレンダー">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </button>
+
+      <div class="home-title-group">
+        <div class="home-title">今日の喫煙記録</div>
+        <div class="home-date" id="home-date-label">2026年11月26日(木)</div>
+      </div>
+
+      <!-- アンドゥ（1本前に戻す）ボタン -->
+      <button class="icon-btn" id="undo-btn" onclick="openUndoModal()" title="1本前に戻す（取り消し）">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v6h6"></path>
+          <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 0時跨ぎバナー -->
+    <div id="midnight-banner" class="midnight-banner" style="display: none;">
+      <div class="midnight-banner-title">日付が変わりました（0時リセット）</div>
+      <div class="midnight-banner-val" id="midnight-banner-text">昨日の最終本数：0本</div>
+    </div>
+
+    <!-- 中央カウント表示 -->
+    <div class="counter-display-wrap">
+      <div class="counter-number" id="today-count">0</div>
+      <div class="counter-unit">本目（今日）</div>
+    </div>
+
+    <!-- 金額＆経過時間 -->
+    <div class="home-stats">
+      <div class="stat-row">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 16h15v4H2zM19 16h3v4h-3zM17 12c0-2-2-2-2-4s2-2 2-4M21 12c0-2-2-2-2-4s2-2 2-4"/>
+        </svg>
+        <span>今日の喫煙金額：<strong id="today-cost">0</strong>円</span>
+      </div>
+      <div class="stat-row">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="13" r="8"></circle>
+          <path d="M12 9v4l2 2M5 3L2 6M22 6l-3-3M10 2h4"/>
+        </svg>
+        <span>経過時間：<strong id="elapsed-time">--時間--分</strong></span>
+      </div>
+      <div class="elapsed-sub" id="last-smoke-sub">まだ記録がありません</div>
+    </div>
+
+    <!-- プラスボタン -->
+    <div class="plus-btn-wrap">
+      <button class="plus-btn" onclick="addSmokeNow()" aria-label="1本カウント追加">＋</button>
+    </div>
+  </section>
+
+  <!-- 2. カレンダー・履歴画面 -->
+  <section id="screen-calendar" class="screen">
+    <div class="card">
+      <div class="cal-header">
+        <button class="nav-arrow" onclick="changeCalMonth(-1)">‹</button>
+        <div class="cal-month-title" id="cal-month-label">2026年11月</div>
+        <button class="nav-arrow" onclick="changeCalMonth(1)">›</button>
+      </div>
+
+      <div class="cal-weekdays">
+        <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+
+      <!-- 4種金額＆本数サマリー -->
+      <div class="cost-grid">
+        <div class="cost-box">
+          <div class="cost-label" id="sum-day-label">選択日の金額</div>
+          <div class="cost-val" id="sum-day-cost">0円</div>
+          <div class="cost-sub" id="sum-day-count">0本</div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-label" id="sum-month-label">今月の金額</div>
+          <div class="cost-val" id="sum-month-cost">0円</div>
+          <div class="cost-sub" id="sum-month-count">0本</div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-label" id="sum-year-label">今年の金額</div>
+          <div class="cost-val" id="sum-year-cost">0円</div>
+          <div class="cost-sub" id="sum-year-count">0本</div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-label">これまでの合計</div>
+          <div class="cost-val" id="sum-total-cost">0円</div>
+          <div class="cost-sub" id="sum-total-count">0本</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 選択日の詳細履歴 -->
+    <div class="card">
+      <div class="day-detail-header">
+        <div class="day-detail-title" id="selected-date-title">2026年11月26日</div>
+        <button class="add-log-btn" onclick="openManualAddModal()">＋ 追加</button>
+      </div>
+      <div class="log-table-header">
+        <div>本数</div>
+        <div>喫煙時刻</div>
+        <div>時間間隔</div>
+        <div></div>
+      </div>
+      <div id="day-log-list"></div>
+    </div>
+  </section>
+
+  <!-- 3. 分析・グラフ画面（月・年） -->
+  <section id="screen-stats" class="screen">
+    <div class="segment-bar">
+      <button class="segment-btn active" id="seg-month" onclick="setStatsMode('month')">月</button>
+      <button class="segment-btn" id="seg-year" onclick="setStatsMode('year')">年</button>
+    </div>
+
+    <div class="card">
+      <div class="chart-header">
+        <button class="nav-arrow" onclick="changeStatsPeriod(-1)">‹</button>
+        <div class="chart-range-label" id="stats-period-label">2026年11月1日〜30日</div>
+        <button class="nav-arrow" onclick="changeStatsPeriod(1)">›</button>
+      </div>
+
+      <div class="year-sub-toggle" id="year-sub-toggle" style="display: none;">
+        <button class="sub-pill active" id="year-unit-day" onclick="setYearUnit('day')">1日あたり（経過日数計算）</button>
+        <button class="sub-pill" id="year-unit-month" onclick="setYearUnit('month')">1ヶ月あたり（経過月数計算）</button>
+      </div>
+
+      <div class="chart-container" id="chart-container"></div>
+      <div class="calc-note" id="stats-calc-note"></div>
+    </div>
+
+    <div class="section-label">喫煙本数</div>
+    <div class="stat-table">
+      <div class="stat-table-head">
+        <div>最小</div>
+        <div>平均</div>
+        <div>最大</div>
+      </div>
+      <div class="stat-table-body">
+        <div><span id="stat-min-count">-</span><small>本</small></div>
+        <div><span id="stat-avg-count">-</span><small>本</small></div>
+        <div><span id="stat-max-count">-</span><small>本</small></div>
+      </div>
+    </div>
+
+    <div class="section-label">喫煙金額</div>
+    <div class="stat-table">
+      <div class="stat-table-head">
+        <div>最小</div>
+        <div>平均</div>
+        <div>最大</div>
+      </div>
+      <div class="stat-table-body">
+        <div><span id="stat-min-cost">-</span><small>円</small></div>
+        <div><span id="stat-avg-cost">-</span><small>円</small></div>
+        <div><span id="stat-max-cost">-</span><small>円</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. データ管理専用タブ（JSON書き出し・読み込み） -->
+  <section id="screen-data" class="screen">
+    <div class="page-header-bar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
+        <polyline points="9 15 12 12 15 15"></polyline>
+      </svg>
+      <span>JSONデータ書き出し・読み込み</span>
+    </div>
+
+    <!-- 現在のデータ状況 -->
+    <div class="card">
+      <div class="day-detail-title">現在の保存データ状況</div>
+      <div class="data-summary-grid">
+        <div class="data-stat-box">
+          <div class="data-stat-label">総記録本数</div>
+          <div class="data-stat-value" id="data-total-count">0 本</div>
+          <div class="data-stat-sub" id="data-date-range">記録なし</div>
+        </div>
+        <div class="data-stat-box">
+          <div class="data-stat-label">前回JSON書き出し</div>
+          <div class="data-stat-value" id="data-last-export" style="font-size: 14px;">未実施</div>
+          <div class="data-stat-sub" id="data-unsaved-diff">定期保存をおすすめします</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON書き出しカード -->
+    <div class="card">
+      <div class="day-detail-title" style="margin-bottom: 6px;">1. JSONファイルに書き出し（保存）</div>
+      <p style="font-size: 13px; color: #4B5563; margin: 0 0 14px; line-height: 1.55;">
+        すべての喫煙日時と価格設定を1つのJSONファイルに書き出します。iPhoneの場合は「ファイル」アプリ（このiPhone内 / iCloud Drive）にローカル保存できます。
+      </p>
+
+      <button class="action-btn export-primary" onclick="exportJsonDownload()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        JSONファイルを書き出す（ダウンロード）
+      </button>
+
+      <!-- iPhoneのホーム画面PWAでも確実にファイルアプリへ保存できる共有シートボタン -->
+      <button class="action-btn export-share" id="ios-share-btn" onclick="exportJsonShare()">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+          <polyline points="16 6 12 2 8 6"></polyline>
+          <line x1="12" y1="2" x2="12" y2="15"></line>
+        </svg>
+        iPhoneの「ファイル」に保存（共有メニュー）
+      </button>
+    </div>
+
+    <!-- JSON読み込みカード -->
+    <div class="card">
+      <div class="day-detail-title" style="margin-bottom: 6px;">2. JSONファイルから読み込み（復元）</div>
+      <p style="font-size: 13px; color: #4B5563; margin: 0 0 14px; line-height: 1.55;">
+        端末に保存しておいたJSONファイルを選択してデータを読み込みます。読み込み時に「上書き」か「現在の記録と合体」かを選べます。
+      </p>
+
+      <button class="action-btn import-primary" onclick="document.getElementById('import-json-input').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        JSONファイルを選択して読み込む
+      </button>
+      <input type="file" id="import-json-input" accept=".json,application/json" style="display: none;" onchange="handleJsonFileSelect(event)" />
+    </div>
+
+    <!-- iPhoneでの保存ガイド＆JSON中身確認 -->
+    <div class="card">
+      <div class="day-detail-title">iPhoneでのローカル保存・読み込み方法</div>
+      <ul class="guide-list">
+        <li><strong>保存する時：</strong>上の「書き出す」または「ファイルに保存」を押し、メニュー内の<strong>「"ファイル"に保存」</strong>を選ぶと、iPhone本体やiCloud DriveにJSONファイルとして残せます。</li>
+        <li><strong>読み込む時：</strong>「JSONファイルを選択して読み込む」→「ファイルを選択」から、保存した <code>smoking-records-〇〇.json</code> を選んでください。</li>
+      </ul>
+
+      <div style="margin-top: 12px; border-top: 1px solid #E5E7EB; padding-top: 10px;">
+        <button class="json-preview-toggle" onclick="toggleJsonPreview()">
+          <span id="json-preview-arrow">▶</span> 現在のJSONデータ中身を確認する
+        </button>
+        <pre id="json-preview-box" class="json-preview-box"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 設定画面 -->
+  <section id="screen-settings" class="screen">
+    <div class="page-header-bar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1F2937" stroke-width="2.2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span>設定</span>
+    </div>
+
+    <div class="card">
+      <div class="day-detail-title" style="margin-bottom: 12px;">タバコの価格設定</div>
+      <div class="form-group">
+        <label class="form-label" for="input-pack-price">1箱の値段（円）</label>
+        <input type="number" id="input-pack-price" class="form-input" min="1" step="1" placeholder="例: 580" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="input-sticks-per-pack">1箱の本数（本）</label>
+        <input type="number" id="input-sticks-per-pack" class="form-input" min="1" step="1" placeholder="例: 20" />
+      </div>
+      <div style="font-size: 13px; color: #6B7280; margin-bottom: 14px;">
+        現在の1本あたり単価：<strong id="unit-price-preview">23.5</strong> 円
+      </div>
+      <button class="primary-btn" onclick="saveSettings()">設定を保存する</button>
+    </div>
+
+    <div class="card">
+      <div class="day-detail-title" style="margin-bottom: 8px;">ホーム画面への追加方法</div>
+      <p style="font-size: 13px; color: #4B5563; margin: 0; line-height: 1.6;">
+        <strong>iPhone (Safari)：</strong>画面下の共有ボタン（□に↑）→「ホーム画面に追加」<br>
+        <strong>Android (Chrome)：</strong>右上のメニュー（︙）→「アプリをインストール」または「ホーム画面に追加」
+      </p>
+    </div>
+  </section>
+
+  <!-- ボトムナビゲーション（5タブ） -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+      <div class="nav-icon-circle">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 16h15v4H2zM19 16h3v4h-3zM17 12c0-2-2-2-2-4s2-2 2-4M21 12c0-2-2-2-2-4s2-2 2-4"/>
+        </svg>
+      </div>
+      <span>入力</span>
+    </button>
+    <button class="nav-item" id="nav-stats" onclick="switchTab('stats')">
+      <div class="nav-icon-circle">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+      </div>
+      <span>分析</span>
+    </button>
+    <button class="nav-item" id="nav-calendar" onclick="switchTab('calendar')">
+      <div class="nav-icon-circle">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </div>
+      <span>履歴</span>
+    </button>
+    <button class="nav-item" id="nav-data" onclick="switchTab('data')">
+      <div class="nav-icon-circle">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <path d="M12 18v-6"></path>
+          <path d="M9 15l3-3 3 3"></path>
+        </svg>
+      </div>
+      <span>データ</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <div class="nav-icon-circle">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </div>
+      <span>設定</span>
+    </button>
+  </nav>
+
+  <!-- アンドゥ確認モーダル -->
+  <div id="undo-modal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">1本前に戻しますか？</div>
+      <div class="modal-desc" id="undo-modal-desc">直前の喫煙記録を取り消します。</div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('undo-modal')">いいえ</button>
+        <button class="modal-btn confirm" onclick="confirmUndo()">はい</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 過去記録の手動追加モーダル -->
+  <div id="manual-modal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">喫煙記録を追加</div>
+      <div class="modal-desc" id="manual-modal-date">2026年11月26日</div>
+      <div class="form-group">
+        <label class="form-label" for="manual-time-input">喫煙時刻</label>
+        <input type="time" id="manual-time-input" class="form-input" />
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('manual-modal')">キャンセル</button>
+        <button class="modal-btn confirm" onclick="confirmManualAdd()">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON読み込み方法選択モーダル -->
+  <div id="import-confirm-modal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">JSONデータの読み込み</div>
+      <div class="modal-info-card" id="import-file-summary">
+        読み込みファイルを確認中...
+      </div>
+      <div class="modal-actions-col">
+        <button class="modal-btn merge" onclick="applyImportedJson('merge')">現在の記録と合体する（重複除外）</button>
+        <button class="modal-btn overwrite" onclick="applyImportedJson('overwrite')">上書きして置き換える</button>
+        <button class="modal-btn cancel" onclick="closeModal('import-confirm-modal')">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // データ管理・ユーティリティ
+    // ==========================================
+    const STORAGE_KEY = 'smoking_pwa_store_v1';
+    const META_KEY = 'smoking_pwa_meta_v1';
+    const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
+
+    let store = loadStore();
+    let meta = loadMeta();
+    let currentTab = 'home';
+    let pendingImportData = null;
+
+    // カレンダー状態
+    const initNow = new Date();
+    let calYear = initNow.getFullYear();
+    let calMonth = initNow.getMonth();
+    let selectedDateKey = getLocalDateKey(initNow.getTime());
+
+    // 分析画面状態
+    let statsMode = 'month';
+    let statsYear = initNow.getFullYear();
+    let statsMonth = initNow.getMonth();
+    let yearUnit = 'day';
+
+    function loadStore() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            settings: {
+              packPrice: Number(parsed.settings?.packPrice) || 470,
+              sticksPerPack: Number(parsed.settings?.sticksPerPack) || 20
+            },
+            logs: Array.isArray(parsed.logs) ? parsed.logs.map(Number).filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b) : []
+          };
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return {
+        settings: { packPrice: 470, sticksPerPack: 20 },
+        logs: []
+      };
+    }
+
+    function loadMeta() {
+      try {
+        const raw = localStorage.getItem(META_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return { lastExportAt: null, lastExportCount: 0 };
+    }
+
+    function saveStore() {
+      store.logs.sort((a, b) => a - b);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      } catch (e) {
+        showToast('保存に失敗しました（容量不足/プライベートモード）');
+      }
+    }
+
+    function saveMeta() {
+      try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
+    }
+
+    function getUnitPrice() {
+      return store.settings.packPrice / store.settings.sticksPerPack;
+    }
+
+    function calcCost(count) {
+      return Math.round(count * getUnitPrice());
+    }
+
+    function getLocalDateKey(ts) {
+      const d = new Date(ts);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseDateKey(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function formatDateTimeJP(ts) {
+      const d = new Date(ts);
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function formatDurationHM(ms) {
+      if (ms < 0) ms = 0;
+      const totalMins = Math.floor(ms / 60000);
+      const hours = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      return `${hours}時間${String(mins).padStart(2, '0')}分`;
+    }
+
+    function formatDurationHMS(ms) {
+      if (ms < 0) ms = 0;
+      const totalSecs = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSecs / 3600);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = totalSecs % 60;
+      return `${hours}時間${String(mins).padStart(2, '0')}分${String(secs).padStart(2, '0')}秒`;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    // ==========================================
+    // タブ切り替え
+    // ==========================================
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+      document.getElementById(`screen-${tab}`).classList.add('active');
+      document.getElementById(`nav-${tab}`).classList.add('active');
+
+      const themeMeta = document.getElementById('theme-color-meta');
+      themeMeta.setAttribute('content', tab === 'home' ? '#1E2428' : '#F3F4F6');
+
+      if (tab === 'home') renderHome();
+      if (tab === 'calendar') renderCalendar();
+      if (tab === 'stats') renderStats();
+      if (tab === 'data') renderDataScreen();
+      if (tab === 'settings') renderSettings();
+    }
+
+    // ==========================================
+    // 1. メイン画面ロジック
+    // ==========================================
+    function renderHome() {
+      const now = Date.now();
+      const nowDate = new Date(now);
+      const todayKey = getLocalDateKey(now);
+
+      const y = nowDate.getFullYear();
+      const m = nowDate.getMonth() + 1;
+      const d = nowDate.getDate();
+      const w = WEEKDAYS_JP[nowDate.getDay()];
+      document.getElementById('home-date-label').textContent = `${y}年${m}月${d}日(${w})`;
+
+      // 記録は昇順なので末尾から走査（全件フィルタを避ける）
+      let todayCount = 0;
+      let i = store.logs.length - 1;
+      while (i >= 0 && getLocalDateKey(store.logs[i]) === todayKey) { todayCount++; i--; }
+      document.getElementById('today-count').textContent = todayCount;
+      document.getElementById('today-cost').textContent = calcCost(todayCount).toLocaleString();
+
+      // 0時を跨いだ直後：直近の記録がある日（昨日とは限らない）の最終本数を表示
+      const banner = document.getElementById('midnight-banner');
+      const lastTs = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
+      if (todayCount === 0 && lastTs) {
+        const lastKey = getLocalDateKey(lastTs);
+        let prevCount = 0;
+        let j = store.logs.length - 1;
+        while (j >= 0 && getLocalDateKey(store.logs[j]) === lastKey) { prevCount++; j--; }
+        const ld = new Date(lastTs);
+        const dayLabel = `${ld.getMonth() + 1}/${ld.getDate()}`;
+        banner.style.display = 'block';
+        document.getElementById('midnight-banner-text').textContent =
+          `${dayLabel}の最終本数：${prevCount}本（前回から ${formatDurationHM(now - lastTs)} 経過）`;
+      } else {
+        banner.style.display = 'none';
+      }
+
+      const elapsedEl = document.getElementById('elapsed-time');
+      const subEl = document.getElementById('last-smoke-sub');
+
+      if (lastTs) {
+        const diff = now - lastTs;
+        elapsedEl.textContent = formatDurationHMS(diff);
+        const ld = new Date(lastTs);
+        const lDateStr = getLocalDateKey(lastTs) === todayKey ? '今日' : `${ld.getMonth() + 1}/${ld.getDate()}`;
+        const lTimeStr = `${String(ld.getHours()).padStart(2, '0')}:${String(ld.getMinutes()).padStart(2, '0')}`;
+        subEl.textContent = `前回喫煙：${lDateStr} ${lTimeStr}（${formatDurationHM(diff)}前）`;
+      } else {
+        elapsedEl.textContent = '--時間--分';
+        subEl.textContent = '下の「＋」ボタンで記録を開始します';
+      }
+
+      document.getElementById('undo-btn').disabled = store.logs.length === 0;
+    }
+
+    function addSmokeNow() {
+      const now = Date.now();
+      const prevLast = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
+      store.logs.push(now);
+      saveStore();
+
+      selectedDateKey = getLocalDateKey(now);
+
+      const numEl = document.getElementById('today-count');
+      numEl.classList.remove('pop');
+      void numEl.offsetWidth;
+      numEl.classList.add('pop');
+      setTimeout(() => numEl.classList.remove('pop'), 180);
+
+      renderHome();
+      if (prevLast) {
+        showToast(`記録しました（前回から ${formatDurationHM(now - prevLast)}）`);
+      } else {
+        showToast('1本目を記録しました');
+      }
+    }
+
+    function openUndoModal() {
+      if (store.logs.length === 0) return;
+      const lastTs = store.logs[store.logs.length - 1];
+      const d = new Date(lastTs);
+      const todayKey = getLocalDateKey(Date.now());
+      const dayLabel = getLocalDateKey(lastTs) === todayKey ? '今日' : `${d.getMonth() + 1}月${d.getDate()}日`;
+      const timeLabel = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      document.getElementById('undo-modal-desc').textContent =
+        `直前の記録（${dayLabel} ${timeLabel}）を取り消して1本前に戻しますか？`;
+      document.getElementById('undo-modal').classList.add('open');
+    }
+
+    function confirmUndo() {
+      if (store.logs.length > 0) {
+        store.logs.pop();
+        saveStore();
+        renderHome();
+        showToast('1本前に戻しました');
+      }
+      closeModal('undo-modal');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    setInterval(() => {
+      if (currentTab === 'home') {
+        renderHome();
+      }
+    }, 1000);
+
+    // ==========================================
+    // 2. カレンダー・履歴画面ロジック
+    // ==========================================
+    function changeCalMonth(delta) {
+      calMonth += delta;
+      if (calMonth < 0) {
+        calMonth = 11;
+        calYear--;
+      } else if (calMonth > 11) {
+        calMonth = 0;
+        calYear++;
+      }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      document.getElementById('cal-month-label').textContent = `${calYear}年${calMonth + 1}月`;
+
+      const countByDate = {};
+      store.logs.forEach(ts => {
+        const k = getLocalDateKey(ts);
+        countByDate[k] = (countByDate[k] || 0) + 1;
+      });
+
+      const grid = document.getElementById('cal-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(calYear, calMonth, 1);
+      const startWeekday = firstDay.getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+      const todayKey = getLocalDateKey(Date.now());
+
+      for (let i = 0; i < 42; i++) {
+        let cellYear = calYear;
+        let cellMonth = calMonth;
+        let cellDay = 0;
+        let isOther = false;
+
+        if (i < startWeekday) {
+          cellDay = prevMonthDays - startWeekday + i + 1;
+          cellMonth = calMonth - 1;
+          if (cellMonth < 0) { cellMonth = 11; cellYear--; }
+          isOther = true;
+        } else if (i >= startWeekday + daysInMonth) {
+          cellDay = i - (startWeekday + daysInMonth) + 1;
+          cellMonth = calMonth + 1;
+          if (cellMonth > 11) { cellMonth = 0; cellYear++; }
+          isOther = true;
+        } else {
+          cellDay = i - startWeekday + 1;
+        }
+
+        const key = `${cellYear}-${String(cellMonth + 1).padStart(2, '0')}-${String(cellDay).padStart(2, '0')}`;
+        const count = countByDate[key] || 0;
+        const weekday = i % 7;
+
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell' +
+          (isOther ? ' other-month' : '') +
+          (key === selectedDateKey ? ' selected' : '') +
+          (key === todayKey ? ' today' : '');
+
+        cell.onclick = () => {
+          selectedDateKey = key;
+          if (isOther) {
+            calYear = cellYear;
+            calMonth = cellMonth;
+          }
+          renderCalendar();
+        };
+
+        const dayClass = weekday === 0 ? 'sun' : (weekday === 6 ? 'sat' : '');
+        cell.innerHTML = `
+          <div class="cal-day-num ${dayClass}">${cellDay}</div>
+          <div class="cal-count ${count === 0 ? 'zero' : ''}">${count > 0 ? count : '-'}</div>
+        `;
+        grid.appendChild(cell);
+      }
+
+      const selDateObj = parseDateKey(selectedDateKey);
+      const dayCount = countByDate[selectedDateKey] || 0;
+
+      const monthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-`;
+      const monthCount = store.logs.filter(ts => getLocalDateKey(ts).startsWith(monthPrefix)).length;
+
+      const yearPrefix = `${calYear}-`;
+      const yearCount = store.logs.filter(ts => getLocalDateKey(ts).startsWith(yearPrefix)).length;
+
+      const totalCount = store.logs.length;
+
+      document.getElementById('sum-day-label').textContent = `${selDateObj.getMonth() + 1}月${selDateObj.getDate()}日の金額`;
+      document.getElementById('sum-day-cost').textContent = `${calcCost(dayCount).toLocaleString()}円`;
+      document.getElementById('sum-day-count').textContent = `${dayCount}本`;
+
+      document.getElementById('sum-month-label').textContent = `${calYear}年${calMonth + 1}月の金額`;
+      document.getElementById('sum-month-cost').textContent = `${calcCost(monthCount).toLocaleString()}円`;
+      document.getElementById('sum-month-count').textContent = `${monthCount}本`;
+
+      document.getElementById('sum-year-label').textContent = `${calYear}年の金額`;
+      document.getElementById('sum-year-cost').textContent = `${calcCost(yearCount).toLocaleString()}円`;
+      document.getElementById('sum-year-count').textContent = `${yearCount}本`;
+
+      document.getElementById('sum-total-cost').textContent = `${calcCost(totalCount).toLocaleString()}円`;
+      document.getElementById('sum-total-count').textContent = `${totalCount}本`;
+
+      document.getElementById('selected-date-title').textContent =
+        `${selDateObj.getFullYear()}年${selDateObj.getMonth() + 1}月${selDateObj.getDate()}日`;
+
+      const listEl = document.getElementById('day-log-list');
+      listEl.innerHTML = '';
+
+      const dayEntries = [];
+      store.logs.forEach((ts, globalIdx) => {
+        if (getLocalDateKey(ts) === selectedDateKey) {
+          dayEntries.push({ ts, globalIdx });
+        }
+      });
+
+      if (dayEntries.length === 0) {
+        listEl.innerHTML = '<div class="empty-logs">この日の喫煙記録はありません</div>';
+        return;
+      }
+
+      dayEntries.forEach((entry, idx) => {
+        const d = new Date(entry.ts);
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        let intervalStr = '初回記録';
+        if (entry.globalIdx > 0) {
+          const prevTs = store.logs[entry.globalIdx - 1];
+          intervalStr = formatDurationHM(entry.ts - prevTs);
+        }
+
+        const row = document.createElement('div');
+        row.className = 'log-row';
+        row.innerHTML = `
+          <div class="log-idx">${idx + 1}</div>
+          <div>${timeStr}</div>
+          <div class="log-interval">${intervalStr}</div>
+          <div><button class="del-log-btn" onclick="deleteLogAt(${entry.globalIdx})" title="削除">×</button></div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    function deleteLogAt(globalIdx) {
+      store.logs.splice(globalIdx, 1);
+      saveStore();
+      renderCalendar();
+      showToast('記録を削除しました');
+    }
+
+    function openManualAddModal() {
+      const d = parseDateKey(selectedDateKey);
+      document.getElementById('manual-modal-date').textContent =
+        `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 に記録を追加`;
+      const now = new Date();
+      document.getElementById('manual-time-input').value =
+        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      document.getElementById('manual-modal').classList.add('open');
+    }
+
+    function confirmManualAdd() {
+      const timeVal = document.getElementById('manual-time-input').value;
+      if (!timeVal) return;
+      const [hh, mm] = timeVal.split(':').map(Number);
+      const d = parseDateKey(selectedDateKey);
+      d.setHours(hh, mm, 0, 0);
+      if (d.getTime() > Date.now()) {
+        showToast('未来の時刻は追加できません');
+        return;
+      }
+      store.logs.push(d.getTime());
+      saveStore();
+      closeModal('manual-modal');
+      renderCalendar();
+      showToast('記録を追加しました');
+    }
+
+    // ==========================================
+    // 3. グラフ・統計画面ロジック
+    // ==========================================
+    function setStatsMode(mode) {
+      statsMode = mode;
+      document.getElementById('seg-month').classList.toggle('active', mode === 'month');
+      document.getElementById('seg-year').classList.toggle('active', mode === 'year');
+      document.getElementById('year-sub-toggle').style.display = mode === 'year' ? 'flex' : 'none';
+      renderStats();
+    }
+
+    function setYearUnit(unit) {
+      yearUnit = unit;
+      document.getElementById('year-unit-day').classList.toggle('active', unit === 'day');
+      document.getElementById('year-unit-month').classList.toggle('active', unit === 'month');
+      renderStats();
+    }
+
+    function changeStatsPeriod(delta) {
+      if (statsMode === 'month') {
+        statsMonth += delta;
+        if (statsMonth < 0) { statsMonth = 11; statsYear--; }
+        if (statsMonth > 11) { statsMonth = 0; statsYear++; }
+      } else {
+        statsYear += delta;
+      }
+      renderStats();
+    }
+
+    function renderStats() {
+      const now = new Date();
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
+      const nowDay = now.getDate();
+
+      const countByDate = {};
+      store.logs.forEach(ts => {
+        const k = getLocalDateKey(ts);
+        countByDate[k] = (countByDate[k] || 0) + 1;
+      });
+
+      if (statsMode === 'month') {
+        const daysInMonth = new Date(statsYear, statsMonth + 1, 0).getDate();
+        document.getElementById('stats-period-label').textContent =
+          `${statsYear}年${statsMonth + 1}月1日〜${daysInMonth}日`;
+
+        const allDaysValues = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+          const key = `${statsYear}-${String(statsMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          allDaysValues.push(countByDate[key] || 0);
+        }
+
+        let effectiveDays = 0;
+        let noteText = '';
+        if (statsYear < nowYear || (statsYear === nowYear && statsMonth < nowMonth)) {
+          effectiveDays = daysInMonth;
+          noteText = `過去月の統計：全${daysInMonth}日間のデータで最小・最大・平均を計算しています。`;
+        } else if (statsYear === nowYear && statsMonth === nowMonth) {
+          effectiveDays = nowDay;
+          noteText = `今月の独自計算：月の全日数（${daysInMonth}日）ではなく、1日〜今日までの経過日数（${effectiveDays}日間）で計算しています。`;
+        } else {
+          effectiveDays = 0;
+          noteText = '未来の月のデータはまだありません。';
+        }
+
+        drawBarChart(allDaysValues, 'month', effectiveDays);
+        updateStatTables(effectiveDays > 0 ? allDaysValues.slice(0, effectiveDays) : []);
+        document.getElementById('stats-calc-note').textContent = noteText;
+
+      } else {
+        document.getElementById('stats-period-label').textContent = `${statsYear}年（1月〜12月）`;
+
+        const monthlyTotals = [];
+        for (let m = 0; m < 12; m++) {
+          const prefix = `${statsYear}-${String(m + 1).padStart(2, '0')}-`;
+          const mCount = store.logs.filter(ts => getLocalDateKey(ts).startsWith(prefix)).length;
+          monthlyTotals.push(mCount);
+        }
+
+        let effectiveMonths = 0;
+        if (statsYear < nowYear) effectiveMonths = 12;
+        else if (statsYear === nowYear) effectiveMonths = nowMonth + 1;
+
+        drawBarChart(monthlyTotals, 'year', effectiveMonths);
+
+        if (statsYear > nowYear) {
+          updateStatTables([]);
+          document.getElementById('stats-calc-note').textContent = '未来の年のデータはまだありません。';
+          return;
+        }
+
+        if (yearUnit === 'month') {
+          let targetMonths = monthlyTotals.slice(0, effectiveMonths);
+          let note = `過去年の統計：全12ヶ月間の月間本数で最小・最大・平均を計算しています。`;
+          if (statsYear === nowYear) {
+            if (effectiveMonths > 1) {
+              // 今月はまだ途中なので、終了した月だけで計算
+              targetMonths = monthlyTotals.slice(0, effectiveMonths - 1);
+              note = `今年の独自計算：途中の今月を除き、1月〜先月まで（${targetMonths.length}ヶ月間）で計算しています。`;
+            } else {
+              note = `今年の独自計算：今月が1ヶ月目のため、今月の途中経過の本数を表示しています。`;
+            }
+          }
+          updateStatTables(targetMonths);
+          document.getElementById('stats-calc-note').textContent = note;
+        } else {
+          const startOfYear = new Date(statsYear, 0, 1);
+          const endOfTarget = (statsYear === nowYear)
+            ? new Date(nowYear, nowMonth, nowDay)
+            : new Date(statsYear, 11, 31);
+
+          const dailySeries = [];
+          for (let cur = new Date(startOfYear); cur <= endOfTarget; cur.setDate(cur.getDate() + 1)) {
+            const k = getLocalDateKey(cur.getTime());
+            dailySeries.push(countByDate[k] || 0);
+          }
+          updateStatTables(dailySeries);
+          document.getElementById('stats-calc-note').textContent =
+            statsYear === nowYear
+              ? `今年の独自計算：365日ではなく、1月1日〜今日までの経過日数（${dailySeries.length}日間）で1日あたりの最小・最大・平均を計算しています。`
+              : `過去年の統計：全${dailySeries.length}日間の1日あたり本数で最小・最大・平均を計算しています。`;
+        }
+      }
+    }
+
+    function updateStatTables(values) {
+      if (!values || values.length === 0) {
+        ['stat-min-count', 'stat-avg-count', 'stat-max-count', 'stat-min-cost', 'stat-avg-cost', 'stat-max-cost']
+          .forEach(id => document.getElementById(id).textContent = '-');
+        return;
+      }
+      const minVal = Math.min(...values);
+      const maxVal = Math.max(...values);
+      const sumVal = values.reduce((a, b) => a + b, 0);
+      const avgVal = sumVal / values.length;
+
+      document.getElementById('stat-min-count').textContent = minVal;
+      document.getElementById('stat-avg-count').textContent = avgVal.toFixed(1);
+      document.getElementById('stat-max-count').textContent = maxVal;
+
+      document.getElementById('stat-min-cost').textContent = calcCost(minVal).toLocaleString();
+      document.getElementById('stat-avg-cost').textContent = calcCost(avgVal).toLocaleString();
+      document.getElementById('stat-max-cost').textContent = calcCost(maxVal).toLocaleString();
+    }
+
+    function drawBarChart(values, mode, activeCount) {
+      const container = document.getElementById('chart-container');
+      const rawMax = Math.max(...values, 10);
+      const step = rawMax <= 50 ? 10 : (rawMax <= 200 ? 50 : Math.ceil(rawMax / 5 / 100) * 100);
+      const yMax = Math.ceil(rawMax / step) * step;
+
+      const padLeft = 36;
+      const padRight = 8;
+      const padTop = 12;
+      const padBottom = 24;
+      const width = 340;
+      const height = 200;
+      const plotW = width - padLeft - padRight;
+      const plotH = height - padTop - padBottom;
+
+      let svg = `<svg class="bar-chart" viewBox="0 0 ${width} ${height}">`;
+
+      const ticks = 5;
+      for (let i = 0; i <= ticks; i++) {
+        const val = Math.round((yMax / ticks) * i);
+        const y = padTop + plotH - (plotH * (i / ticks));
+        svg += `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="#E5E7EB" stroke-width="1" />`;
+        svg += `<text x="${padLeft - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6B7280" font-weight="600">${val}</text>`;
+      }
+
+      const n = values.length;
+      const slotW = plotW / n;
+      const barW = Math.max(3, slotW * 0.56);
+
+      values.forEach((v, idx) => {
+        const barH = (v / yMax) * plotH;
+        const x = padLeft + idx * slotW + (slotW - barW) / 2;
+        const y = padTop + plotH - barH;
+        const isActive = idx < activeCount;
+        const fill = isActive ? '#9B51E0' : '#E5E7EB';
+        if (barH > 0) {
+          svg += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${fill}" />`;
+        }
+
+        const labelNum = idx + 1;
+        let showLabel = false;
+        if (mode === 'month') {
+          if (labelNum === 1 || labelNum % 5 === 0) showLabel = true;
+        } else {
+          showLabel = true;
+        }
+        if (showLabel) {
+          const lx = padLeft + idx * slotW + slotW / 2;
+          const labelStr = mode === 'year' ? `${labelNum}月` : `${labelNum}`;
+          svg += `<text x="${lx}" y="${height - 5}" text-anchor="middle" font-size="10" fill="#6B7280" font-weight="600">${labelStr}</text>`;
+        }
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+    }
+
+    // ==========================================
+    // 4. データ管理専用タブ（JSON書き出し・読み込み）
+    // ==========================================
+    function buildExportPayload() {
+      return {
+        appName: "smoking-tracker-pwa",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        settings: {
+          packPrice: store.settings.packPrice,
+          sticksPerPack: store.settings.sticksPerPack
+        },
+        totalCount: store.logs.length,
+        logs: store.logs,
+        // 人間がJSONを開いた時にも見やすい日付・時刻リスト
+        readableLogs: store.logs.map((ts, i) => {
+          const d = new Date(ts);
+          return {
+            index: i + 1,
+            timestamp: ts,
+            date: getLocalDateKey(ts),
+            time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+          };
+        })
+      };
+    }
+
+    function renderDataScreen() {
+      const total = store.logs.length;
+      document.getElementById('data-total-count').textContent = `${total.toLocaleString()} 本`;
+
+      if (total > 0) {
+        const firstDate = getLocalDateKey(store.logs[0]).replace(/-/g, '/');
+        const lastDate = getLocalDateKey(store.logs[total - 1]).replace(/-/g, '/');
+        document.getElementById('data-date-range').textContent =
+          firstDate === lastDate ? `${firstDate}` : `${firstDate} 〜 ${lastDate}`;
+      } else {
+        document.getElementById('data-date-range').textContent = '記録なし';
+      }
+
+      if (meta.lastExportAt) {
+        document.getElementById('data-last-export').textContent = formatDateTimeJP(meta.lastExportAt);
+        const diff = total - (meta.lastExportCount || 0);
+        if (diff > 0) {
+          document.getElementById('data-unsaved-diff').textContent = `前回書き出しから +${diff}本 追加あり`;
+        } else {
+          document.getElementById('data-unsaved-diff').textContent = '最新状態まで書き出し済みです';
+        }
+      } else {
+        document.getElementById('data-last-export').textContent = '未実施';
+        document.getElementById('data-unsaved-diff').textContent = '定期的な書き出しをおすすめします';
+      }
+
+      // プレビューが開いていれば中身も更新
+      const previewBox = document.getElementById('json-preview-box');
+      if (previewBox.classList.contains('open')) {
+        previewBox.textContent = JSON.stringify(buildExportPayload(), null, 2);
+      }
+    }
+
+    function recordExportSuccess() {
+      meta.lastExportAt = Date.now();
+      meta.lastExportCount = store.logs.length;
+      saveMeta();
+      renderDataScreen();
+    }
+
+    function exportJsonDownload() {
+      const payload = buildExportPayload();
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const fileName = `smoking-records-${getLocalDateKey(Date.now())}.json`;
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      recordExportSuccess();
+      showToast('JSONファイルを書き出しました');
+    }
+
+    async function exportJsonShare() {
+      const payload = buildExportPayload();
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const fileName = `smoking-records-${getLocalDateKey(Date.now())}.json`;
+
+      try {
+        const file = new File([jsonStr], fileName, { type: 'application/json' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: '喫煙記録データ (JSON)'
+          });
+          recordExportSuccess();
+          showToast('JSONファイルを共有・保存しました');
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+
+      // 非対応環境では標準ダウンロードへフォールバック
+      exportJsonDownload();
+    }
+
+    function handleJsonFileSelect(event) {
+      const file = event.target.files[0];
+      event.target.value = ''; // 同じファイルを再選択できるようにリセット
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed || !Array.isArray(parsed.logs)) {
+            showToast('有効な喫煙記録JSONではありません');
+            return;
+          }
+
+          const validLogs = parsed.logs
+            .map(Number)
+            .filter(n => Number.isFinite(n) && n > 0)
+            .sort((a, b) => a - b);
+
+          pendingImportData = {
+            settings: {
+              packPrice: Number(parsed.settings?.packPrice) || store.settings.packPrice,
+              sticksPerPack: Number(parsed.settings?.sticksPerPack) || store.settings.sticksPerPack
+            },
+            logs: validLogs
+          };
+
+          let rangeText = '記録なし';
+          if (validLogs.length > 0) {
+            const first = getLocalDateKey(validLogs[0]).replace(/-/g, '/');
+            const last = getLocalDateKey(validLogs[validLogs.length - 1]).replace(/-/g, '/');
+            rangeText = first === last ? first : `${first} 〜 ${last}`;
+          }
+
+          document.getElementById('import-file-summary').innerHTML = `
+            <strong>ファイル名：</strong>${file.name.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}<br>
+            <strong>含まれる記録：</strong>${validLogs.length.toLocaleString()} 本<br>
+            <strong>記録期間：</strong>${rangeText}<br>
+            <strong>価格設定：</strong>1箱 ${pendingImportData.settings.packPrice}円（${pendingImportData.settings.sticksPerPack}本）
+          `;
+          document.getElementById('import-confirm-modal').classList.add('open');
+        } catch (err) {
+          showToast('JSONファイルの読み込みに失敗しました');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function applyImportedJson(mode) {
+      if (!pendingImportData) return;
+
+      if (mode === 'overwrite') {
+        store.settings = { ...pendingImportData.settings };
+        store.logs = [...pendingImportData.logs];
+        saveStore();
+        showToast(`JSONから ${store.logs.length}本 を上書き復元しました`);
+      } else if (mode === 'merge') {
+        // 既存の記録と重複しないタイムスタンプを統合
+        const mergedSet = new Set([...store.logs, ...pendingImportData.logs]);
+        store.logs = Array.from(mergedSet).sort((a, b) => a - b);
+        saveStore();
+        showToast(`記録を合体しました（合計 ${store.logs.length}本）`);
+      }
+
+      pendingImportData = null;
+      closeModal('import-confirm-modal');
+      renderDataScreen();
+    }
+
+    function toggleJsonPreview() {
+      const box = document.getElementById('json-preview-box');
+      const arrow = document.getElementById('json-preview-arrow');
+      const willOpen = !box.classList.contains('open');
+      if (willOpen) {
+        box.textContent = JSON.stringify(buildExportPayload(), null, 2);
+        box.classList.add('open');
+        arrow.textContent = '▼';
+      } else {
+        box.classList.remove('open');
+        arrow.textContent = '▶';
+      }
+    }
+
+    // ==========================================
+    // 5. 設定画面ロジック
+    // ==========================================
+    function renderSettings() {
+      document.getElementById('input-pack-price').value = store.settings.packPrice;
+      document.getElementById('input-sticks-per-pack').value = store.settings.sticksPerPack;
+      updateUnitPricePreview();
+    }
+
+    function updateUnitPricePreview() {
+      const p = Number(document.getElementById('input-pack-price').value) || 0;
+      const s = Number(document.getElementById('input-sticks-per-pack').value) || 1;
+      document.getElementById('unit-price-preview').textContent = (p / s).toFixed(1);
+    }
+
+    document.getElementById('input-pack-price').addEventListener('input', updateUnitPricePreview);
+    document.getElementById('input-sticks-per-pack').addEventListener('input', updateUnitPricePreview);
+
+    function saveSettings() {
+      const p = Number(document.getElementById('input-pack-price').value);
+      const s = Number(document.getElementById('input-sticks-per-pack').value);
+      if (p <= 0 || s <= 0) {
+        showToast('正しい数値を入力してください');
+        return;
+      }
+      store.settings.packPrice = p;
+      store.settings.sticksPerPack = s;
+      saveStore();
+      showToast('価格設定を保存しました');
+    }
+
+    // Service Worker 登録
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    // 初期描画
+    renderHome();
+  </script>
+</body>
+</html>
