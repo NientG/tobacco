@@ -42,11 +42,14 @@
       user-select: text;
     }
 
+    html { height: 100%; background: var(--bg-dark); }
+    html.light-tab { background: var(--bg-light); }
+
     body {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-      background-color: var(--bg-dark);
+      background: transparent;
       color: var(--text-light);
       position: fixed;
       inset: 0;
@@ -64,7 +67,7 @@
       padding-bottom: calc(84px + var(--safe-bottom));
     }
     .screen.active > * {
-      flex-shrink: 0; /* 中身が長い時に表やカードが潰れるのを防ぐ */
+      flex-shrink: 0;
     }
     .screen.active {
       display: flex;
@@ -79,6 +82,7 @@
       align-items: center;
       padding-left: 20px;
       padding-right: 20px;
+      min-height: 0;
     }
 
     .home-header {
@@ -128,10 +132,10 @@
 
     /* 0時跨ぎバナー */
     .midnight-banner {
-      background: rgba(155, 81, 224, 0.16);
-      border: 1px solid rgba(155, 81, 224, 0.45);
+      background: rgba(155, 81, 224, 0.18);
+      border: 1px solid rgba(155, 81, 224, 0.5);
       border-radius: 14px;
-      padding: 10px 16px;
+      padding: 10px 14px;
       width: 100%;
       max-width: 360px;
       text-align: center;
@@ -143,10 +147,11 @@
       font-weight: 600;
     }
     .midnight-banner-val {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: #FFFFFF;
-      margin-top: 2px;
+      margin-top: 3px;
+      line-height: 1.45;
     }
 
     /* メインカウンター数字 */
@@ -496,12 +501,12 @@
 
     .calc-note {
       font-size: 11px;
-      color: #6B7280;
+      color: #4B5563;
       background: #F3F4F6;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       margin-top: 8px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .year-sub-toggle {
@@ -572,7 +577,7 @@
       margin-left: 2px;
     }
 
-    /* データ管理（JSON書き出し・読み込み専用タブ） */
+    /* データ管理（1ファイル統合JSON書き出し・読み込み） */
     .data-summary-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -602,6 +607,21 @@
       margin-top: 4px;
     }
 
+    .file-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
     .action-btn {
       width: 100%;
       padding: 14px 16px;
@@ -625,11 +645,13 @@
       color: #FFFFFF;
       box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
-    .action-btn.export-share {
-      background: #EFF6FF;
-      color: var(--accent-blue);
-      border: 1.5px solid #BFDBFE;
+    .action-btn.export-secondary {
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #D1D5DB;
       margin-top: 10px;
+      font-size: 13px;
+      padding: 11px 14px;
     }
     .action-btn.import-primary {
       background: var(--accent-green);
@@ -645,7 +667,7 @@
       line-height: 1.65;
     }
     .guide-list li {
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .json-preview-toggle {
@@ -669,7 +691,7 @@
       padding: 12px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 11px;
-      max-height: 180px;
+      max-height: 160px;
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-all;
@@ -712,10 +734,6 @@
       cursor: pointer;
     }
 
-    html { height: 100%; background: var(--bg-dark); }
-    html.light-tab { background: var(--bg-light); }
-    body { background: transparent; }
-    #screen-home { min-height: 0; }
     .bottom-nav::after {
       content: "";
       position: absolute;
@@ -890,7 +908,7 @@
 
       <div class="home-title-group">
         <div class="home-title">今日の喫煙記録</div>
-        <div class="home-date" id="home-date-label">2026年11月26日(木)</div>
+        <div class="home-date" id="home-date-label"></div>
       </div>
 
       <!-- アンドゥ（1本前に戻す）ボタン -->
@@ -905,7 +923,7 @@
     <!-- 0時跨ぎバナー -->
     <div id="midnight-banner" class="midnight-banner" style="display: none;">
       <div class="midnight-banner-title">日付が変わりました（0時リセット）</div>
-      <div class="midnight-banner-val" id="midnight-banner-text">昨日の最終本数：0本</div>
+      <div class="midnight-banner-val" id="midnight-banner-text"></div>
     </div>
 
     <!-- 中央カウント表示 -->
@@ -943,7 +961,7 @@
     <div class="card">
       <div class="cal-header">
         <button class="nav-arrow" onclick="changeCalMonth(-1)">‹</button>
-        <div class="cal-month-title" id="cal-month-label">2026年11月</div>
+        <div class="cal-month-title" id="cal-month-label"></div>
         <button class="nav-arrow" onclick="changeCalMonth(1)">›</button>
       </div>
 
@@ -980,7 +998,7 @@
     <!-- 選択日の詳細履歴 -->
     <div class="card">
       <div class="day-detail-header">
-        <div class="day-detail-title" id="selected-date-title">2026年11月26日</div>
+        <div class="day-detail-title" id="selected-date-title"></div>
         <button class="add-log-btn" onclick="openManualAddModal()">＋ 追加</button>
       </div>
       <div class="log-table-header">
@@ -1003,7 +1021,7 @@
     <div class="card">
       <div class="chart-header">
         <button class="nav-arrow" onclick="changeStatsPeriod(-1)">‹</button>
-        <div class="chart-range-label" id="stats-period-label">2026年11月1日〜30日</div>
+        <div class="chart-range-label" id="stats-period-label"></div>
         <button class="nav-arrow" onclick="changeStatsPeriod(1)">›</button>
       </div>
 
@@ -1016,7 +1034,7 @@
       <div class="calc-note" id="stats-calc-note"></div>
     </div>
 
-    <div class="section-label">喫煙本数</div>
+    <div class="section-label" id="stat-count-heading">喫煙本数</div>
     <div class="stat-table">
       <div class="stat-table-head">
         <div>最小</div>
@@ -1030,7 +1048,7 @@
       </div>
     </div>
 
-    <div class="section-label">喫煙金額</div>
+    <div class="section-label" id="stat-cost-heading">喫煙金額</div>
     <div class="stat-table">
       <div class="stat-table-head">
         <div>最小</div>
@@ -1045,7 +1063,7 @@
     </div>
   </section>
 
-  <!-- 4. データ管理専用タブ（JSON書き出し・読み込み） -->
+  <!-- 4. データ管理専用タブ（1つの軽量JSONファイルで上書き管理） -->
   <section id="screen-data" class="screen">
     <div class="page-header-bar">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1054,7 +1072,7 @@
         <line x1="12" y1="18" x2="12" y2="12"></line>
         <polyline points="9 15 12 12 15 15"></polyline>
       </svg>
-      <span>JSONデータ書き出し・読み込み</span>
+      <span>データ管理（1ファイル統合）</span>
     </div>
 
     <!-- 現在のデータ状況 -->
@@ -1062,8 +1080,8 @@
       <div class="day-detail-title">現在の保存データ状況</div>
       <div class="data-summary-grid">
         <div class="data-stat-box">
-          <div class="data-stat-label">総記録本数</div>
-          <div class="data-stat-value" id="data-total-count">0 本</div>
+          <div class="data-stat-label">総記録本数 / 容量</div>
+          <div class="data-stat-value"><span id="data-total-count">0 本</span> <small id="data-byte-size" style="font-size:12px; color:#6B7280; font-weight:600;">(0 KB)</small></div>
           <div class="data-stat-sub" id="data-date-range">記録なし</div>
         </div>
         <div class="data-stat-box">
@@ -1074,38 +1092,38 @@
       </div>
     </div>
 
-    <!-- JSON書き出しカード -->
+    <!-- 1つのJSONファイルに書き出し（上書き用） -->
     <div class="card">
-      <div class="day-detail-title" style="margin-bottom: 6px;">1. JSONファイルに書き出し（保存）</div>
+      <div class="file-badge">📄 ファイル名：smoking-records.json（固定）</div>
+      <div class="day-detail-title" style="margin-bottom: 6px;">1. 1つのJSONファイルに書き出し</div>
       <p style="font-size: 13px; color: #4B5563; margin: 0 0 14px; line-height: 1.55;">
-        すべての喫煙日時と価格設定を1つのJSONファイルに書き出します。iPhoneの場合は「ファイル」アプリ（このiPhone内 / iCloud Drive）にローカル保存できます。
+        全期間の記録を最小限の軽量データにまとめて <strong>smoking-records.json</strong> 1つに書き出します。iPhoneで同じフォルダに保存して<strong>「置き換える」</strong>を選ぶとファイルが増えません。
       </p>
 
-      <button class="action-btn export-primary" onclick="exportJsonDownload()">
+      <button class="action-btn export-primary" onclick="exportJsonShare()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        JSONファイルを書き出す（ダウンロード）
-      </button>
-
-      <!-- iPhoneのホーム画面PWAでも確実にファイルアプリへ保存できる共有シートボタン -->
-      <button class="action-btn export-share" id="ios-share-btn" onclick="exportJsonShare()">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
           <polyline points="16 6 12 2 8 6"></polyline>
           <line x1="12" y1="2" x2="12" y2="15"></line>
         </svg>
-        iPhoneの「ファイル」に保存（共有メニュー）
+        iPhoneの「ファイル」に保存（上書き・置き換え）
+      </button>
+
+      <button class="action-btn export-secondary" onclick="exportJsonDownload()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        通常ダウンロード（PC・Android向け）
       </button>
     </div>
 
     <!-- JSON読み込みカード -->
     <div class="card">
-      <div class="day-detail-title" style="margin-bottom: 6px;">2. JSONファイルから読み込み（復元）</div>
+      <div class="day-detail-title" style="margin-bottom: 6px;">2. JSONファイルから読み込み（合体・復元）</div>
       <p style="font-size: 13px; color: #4B5563; margin: 0 0 14px; line-height: 1.55;">
-        端末に保存しておいたJSONファイルを選択してデータを読み込みます。読み込み時に「上書き」か「現在の記録と合体」かを選べます。
+        保存してある <code>smoking-records.json</code> を読み込みます。過去の記録と現在の記録を1つに合体することもできます。
       </p>
 
       <button class="action-btn import-primary" onclick="document.getElementById('import-json-input').click()">
@@ -1119,17 +1137,17 @@
       <input type="file" id="import-json-input" accept=".json,application/json" style="display: none;" onchange="handleJsonFileSelect(event)" />
     </div>
 
-    <!-- iPhoneでの保存ガイド＆JSON中身確認 -->
+    <!-- iPhoneでの1ファイル運用ガイド＆軽量JSON確認 -->
     <div class="card">
-      <div class="day-detail-title">iPhoneでのローカル保存・読み込み方法</div>
+      <div class="day-detail-title">iPhoneでファイルを増やさず1つに保つ手順</div>
       <ul class="guide-list">
-        <li><strong>保存する時：</strong>上の「書き出す」または「ファイルに保存」を押し、メニュー内の<strong>「"ファイル"に保存」</strong>を選ぶと、iPhone本体やiCloud DriveにJSONファイルとして残せます。</li>
-        <li><strong>読み込む時：</strong>「JSONファイルを選択して読み込む」→「ファイルを選択」から、保存した <code>smoking-records-〇〇.json</code> を選んでください。</li>
+        <li><strong>保存する時：</strong>上の青いボタンを押し、共有メニューから<strong>「"ファイル"に保存」</strong>をタップします。</li>
+        <li><strong>2回目以降の保存：</strong>前回と同じ場所（iCloud Driveや「このiPhone内」）を選んで右上の「保存」を押すと、<strong>「"smoking-records.json"はすでに存在します。置き換えますか？」</strong>と表示されるので<strong>「置き換える」</strong>をタップしてください。</li>
       </ul>
 
       <div style="margin-top: 12px; border-top: 1px solid #E5E7EB; padding-top: 10px;">
         <button class="json-preview-toggle" onclick="toggleJsonPreview()">
-          <span id="json-preview-arrow">▶</span> 現在のJSONデータ中身を確認する
+          <span id="json-preview-arrow">▶</span> 軽量化されたJSONの中身を確認する
         </button>
         <pre id="json-preview-box" class="json-preview-box"></pre>
       </div>
@@ -1157,7 +1175,7 @@
         <input type="number" id="input-sticks-per-pack" class="form-input" min="1" step="1" placeholder="例: 20" />
       </div>
       <div style="font-size: 13px; color: #6B7280; margin-bottom: 14px;">
-        現在の1本あたり単価：<strong id="unit-price-preview">23.5</strong> 円
+        現在の1本あたり単価：<strong id="unit-price-preview">29.0</strong> 円
       </div>
       <button class="primary-btn" onclick="saveSettings()">設定を保存する</button>
     </div>
@@ -1240,7 +1258,7 @@
   <div id="manual-modal" class="modal-backdrop">
     <div class="modal-box">
       <div class="modal-title">喫煙記録を追加</div>
-      <div class="modal-desc" id="manual-modal-date">2026年11月26日</div>
+      <div class="modal-desc" id="manual-modal-date"></div>
       <div class="form-group">
         <label class="form-label" for="manual-time-input">喫煙時刻</label>
         <input type="time" id="manual-time-input" class="form-input" />
@@ -1273,6 +1291,7 @@
     // ==========================================
     const STORAGE_KEY = 'smoking_pwa_store_v1';
     const META_KEY = 'smoking_pwa_meta_v1';
+    const EXPORT_FILENAME = 'smoking-records.json';
     const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
 
     let store = loadStore();
@@ -1280,11 +1299,14 @@
     let currentTab = 'home';
     let pendingImportData = null;
 
+    // 日付追従管理（0時跨ぎ検知用）
+    let lastKnownDateKey = getLocalDateKey(Date.now());
+
     // カレンダー状態
     const initNow = new Date();
     let calYear = initNow.getFullYear();
     let calMonth = initNow.getMonth();
-    let selectedDateKey = getLocalDateKey(initNow.getTime());
+    let selectedDateKey = lastKnownDateKey;
 
     // 分析画面状態
     let statsMode = 'month';
@@ -1299,17 +1321,19 @@
           const parsed = JSON.parse(raw);
           return {
             settings: {
-              packPrice: Number(parsed.settings?.packPrice) || 470,
+              packPrice: Number(parsed.settings?.packPrice) || 580,
               sticksPerPack: Number(parsed.settings?.sticksPerPack) || 20
             },
-            logs: Array.isArray(parsed.logs) ? parsed.logs.map(Number).filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b) : []
+            logs: Array.isArray(parsed.logs)
+              ? parsed.logs.map(Number).filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b)
+              : []
           };
         }
       } catch (e) {
         console.error(e);
       }
       return {
-        settings: { packPrice: 470, sticksPerPack: 20 },
+        settings: { packPrice: 580, sticksPerPack: 20 },
         logs: []
       };
     }
@@ -1356,6 +1380,10 @@
       return new Date(y, m - 1, d);
     }
 
+    function getUtcDayNumber(y, m, d) {
+      return Math.floor(Date.UTC(y, m, d) / 86400000);
+    }
+
     function formatDateTimeJP(ts) {
       const d = new Date(ts);
       return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -1385,10 +1413,27 @@
       setTimeout(() => el.classList.remove('show'), 2200);
     }
 
+    // 0時を跨いで日付が変わった際の自動追従
+    function syncDateRollover(nowTs) {
+      const currentKey = getLocalDateKey(nowTs);
+      if (currentKey !== lastKnownDateKey) {
+        const nowD = new Date(nowTs);
+        if (selectedDateKey === lastKnownDateKey) {
+          selectedDateKey = currentKey;
+          calYear = nowD.getFullYear();
+          calMonth = nowD.getMonth();
+        }
+        statsYear = nowD.getFullYear();
+        statsMonth = nowD.getMonth();
+        lastKnownDateKey = currentKey;
+      }
+    }
+
     // ==========================================
     // タブ切り替え
     // ==========================================
     function switchTab(tab) {
+      syncDateRollover(Date.now());
       currentTab = tab;
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1412,6 +1457,7 @@
     // ==========================================
     function renderHome() {
       const now = Date.now();
+      syncDateRollover(now);
       const nowDate = new Date(now);
       const todayKey = getLocalDateKey(now);
 
@@ -1421,26 +1467,36 @@
       const w = WEEKDAYS_JP[nowDate.getDay()];
       document.getElementById('home-date-label').textContent = `${y}年${m}月${d}日(${w})`;
 
-      // 記録は昇順なので末尾から走査（全件フィルタを避ける）
       let todayCount = 0;
       let i = store.logs.length - 1;
-      while (i >= 0 && getLocalDateKey(store.logs[i]) === todayKey) { todayCount++; i--; }
+      while (i >= 0 && getLocalDateKey(store.logs[i]) === todayKey) {
+        todayCount++;
+        i--;
+      }
       document.getElementById('today-count').textContent = todayCount;
       document.getElementById('today-cost').textContent = calcCost(todayCount).toLocaleString();
 
-      // 0時を跨いだ直後：直近の記録がある日（昨日とは限らない）の最終本数を表示
+      // 0時を跨いで今日まだ0本のとき：前の日（直近喫煙日）の最終本数と間隔を表示
       const banner = document.getElementById('midnight-banner');
       const lastTs = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
       if (todayCount === 0 && lastTs) {
         const lastKey = getLocalDateKey(lastTs);
         let prevCount = 0;
         let j = store.logs.length - 1;
-        while (j >= 0 && getLocalDateKey(store.logs[j]) === lastKey) { prevCount++; j--; }
+        while (j >= 0 && getLocalDateKey(store.logs[j]) === lastKey) {
+          prevCount++;
+          j--;
+        }
         const ld = new Date(lastTs);
         const dayLabel = `${ld.getMonth() + 1}/${ld.getDate()}`;
+        const prevLastInterval = store.logs.length >= 2
+          ? formatDurationHM(lastTs - store.logs[store.logs.length - 2])
+          : '初回記録';
+
         banner.style.display = 'block';
-        document.getElementById('midnight-banner-text').textContent =
-          `${dayLabel}の最終本数：${prevCount}本（前回から ${formatDurationHM(now - lastTs)} 経過）`;
+        document.getElementById('midnight-banner-text').innerHTML =
+          `${dayLabel}の最終本数：${prevCount}本（最後の間隔：${prevLastInterval}）<br>` +
+          `<span style="font-size:12px; color:#E9D5FF;">現在までの経過間隔：${formatDurationHM(now - lastTs)}</span>`;
       } else {
         banner.style.display = 'none';
       }
@@ -1465,6 +1521,7 @@
 
     function addSmokeNow() {
       const now = Date.now();
+      syncDateRollover(now);
       const prevLast = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
       store.logs.push(now);
       saveStore();
@@ -1685,11 +1742,15 @@
       const [hh, mm] = timeVal.split(':').map(Number);
       const d = parseDateKey(selectedDateKey);
       d.setHours(hh, mm, 0, 0);
-      if (d.getTime() > Date.now()) {
+      let ts = d.getTime();
+      if (ts > Date.now()) {
         showToast('未来の時刻は追加できません');
         return;
       }
-      store.logs.push(d.getTime());
+      while (store.logs.includes(ts)) {
+        ts += 1;
+      }
+      store.logs.push(ts);
       saveStore();
       closeModal('manual-modal');
       renderCalendar();
@@ -1738,6 +1799,9 @@
       });
 
       if (statsMode === 'month') {
+        document.getElementById('stat-count-heading').textContent = '喫煙本数（1日あたり）';
+        document.getElementById('stat-cost-heading').textContent = '喫煙金額（1日あたり）';
+
         const daysInMonth = new Date(statsYear, statsMonth + 1, 0).getDate();
         document.getElementById('stats-period-label').textContent =
           `${statsYear}年${statsMonth + 1}月1日〜${daysInMonth}日`;
@@ -1752,10 +1816,10 @@
         let noteText = '';
         if (statsYear < nowYear || (statsYear === nowYear && statsMonth < nowMonth)) {
           effectiveDays = daysInMonth;
-          noteText = `過去月の統計：全${daysInMonth}日間のデータで最小・最大・平均を計算しています。`;
+          noteText = `過去月の統計：全${daysInMonth}日間のデータで最小・平均・最大を計算しています。`;
         } else if (statsYear === nowYear && statsMonth === nowMonth) {
           effectiveDays = nowDay;
-          noteText = `今月の独自計算：月の全日数（${daysInMonth}日）ではなく、1日〜今日までの経過日数（${effectiveDays}日間）で計算しています。`;
+          noteText = `今月の経過日数計算：月の全日数（${daysInMonth}日）ではなく、1日〜今日までの経過日数（${effectiveDays}日間）で計算しています。`;
         } else {
           effectiveDays = 0;
           noteText = '未来の月のデータはまだありません。';
@@ -1788,40 +1852,49 @@
         }
 
         if (yearUnit === 'month') {
-          let targetMonths = monthlyTotals.slice(0, effectiveMonths);
-          let note = `過去年の統計：全12ヶ月間の月間本数で最小・最大・平均を計算しています。`;
-          if (statsYear === nowYear) {
-            if (effectiveMonths > 1) {
-              // 今月はまだ途中なので、終了した月だけで計算
-              targetMonths = monthlyTotals.slice(0, effectiveMonths - 1);
-              note = `今年の独自計算：途中の今月を除き、1月〜先月まで（${targetMonths.length}ヶ月間）で計算しています。`;
-            } else {
-              note = `今年の独自計算：今月が1ヶ月目のため、今月の途中経過の本数を表示しています。`;
-            }
+          document.getElementById('stat-count-heading').textContent = '喫煙本数（1ヶ月あたり）';
+          document.getElementById('stat-cost-heading').textContent = '喫煙金額（1ヶ月あたり）';
+
+          if (statsYear < nowYear) {
+            updateStatTables(monthlyTotals);
+            document.getElementById('stats-calc-note').textContent =
+              `過去年の統計：全12ヶ月間の月間本数で最小・平均・最大を計算しています。`;
+          } else {
+            const targetMonths = monthlyTotals.slice(0, nowMonth + 1);
+            const ytdTotal = targetMonths.reduce((a, b) => a + b, 0);
+            const daysInCurrMonth = new Date(nowYear, nowMonth + 1, 0).getDate();
+            const elapsedMonthsDecimal = nowMonth + (nowDay / daysInCurrMonth);
+            const customAvg = elapsedMonthsDecimal > 0 ? (ytdTotal / elapsedMonthsDecimal) : 0;
+
+            updateStatTables(targetMonths, customAvg);
+            document.getElementById('stats-calc-note').textContent =
+              `今年の経過日数計算：12ヶ月ではなく、1月1日〜今日までの経過期間（約${elapsedMonthsDecimal.toFixed(2)}ヶ月分）で平均を算出しています。`;
           }
-          updateStatTables(targetMonths);
-          document.getElementById('stats-calc-note').textContent = note;
         } else {
-          const startOfYear = new Date(statsYear, 0, 1);
-          const endOfTarget = (statsYear === nowYear)
-            ? new Date(nowYear, nowMonth, nowDay)
-            : new Date(statsYear, 11, 31);
+          document.getElementById('stat-count-heading').textContent = '喫煙本数（1日あたり）';
+          document.getElementById('stat-cost-heading').textContent = '喫煙金額（1日あたり）';
+
+          const startDayNum = getUtcDayNumber(statsYear, 0, 1);
+          const endDayNum = (statsYear === nowYear)
+            ? getUtcDayNumber(nowYear, nowMonth, nowDay)
+            : getUtcDayNumber(statsYear, 11, 31);
 
           const dailySeries = [];
-          for (let cur = new Date(startOfYear); cur <= endOfTarget; cur.setDate(cur.getDate() + 1)) {
-            const k = getLocalDateKey(cur.getTime());
+          for (let dayNum = startDayNum; dayNum <= endDayNum; dayNum++) {
+            const d = new Date(dayNum * 86400000);
+            const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
             dailySeries.push(countByDate[k] || 0);
           }
           updateStatTables(dailySeries);
           document.getElementById('stats-calc-note').textContent =
             statsYear === nowYear
-              ? `今年の独自計算：365日ではなく、1月1日〜今日までの経過日数（${dailySeries.length}日間）で1日あたりの最小・最大・平均を計算しています。`
-              : `過去年の統計：全${dailySeries.length}日間の1日あたり本数で最小・最大・平均を計算しています。`;
+              ? `今年の経過日数計算：365日ではなく、1月1日〜今日までの経過日数（${dailySeries.length}日間）で1日あたりの最小・平均・最大を計算しています。`
+              : `過去年の統計：全${dailySeries.length}日間の1日あたり本数で最小・平均・最大を計算しています。`;
         }
       }
     }
 
-    function updateStatTables(values) {
+    function updateStatTables(values, overrideAvg = null) {
       if (!values || values.length === 0) {
         ['stat-min-count', 'stat-avg-count', 'stat-max-count', 'stat-min-cost', 'stat-avg-cost', 'stat-max-cost']
           .forEach(id => document.getElementById(id).textContent = '-');
@@ -1830,7 +1903,7 @@
       const minVal = Math.min(...values);
       const maxVal = Math.max(...values);
       const sumVal = values.reduce((a, b) => a + b, 0);
-      const avgVal = sumVal / values.length;
+      const avgVal = overrideAvg !== null ? overrideAvg : (sumVal / values.length);
 
       document.getElementById('stat-min-count').textContent = minVal;
       document.getElementById('stat-avg-count').textContent = avgVal.toFixed(1);
@@ -1899,35 +1972,32 @@
     }
 
     // ==========================================
-    // 4. データ管理専用タブ（JSON書き出し・読み込み）
+    // 4. データ管理専用タブ（シンプル・軽量1ファイルJSON）
     // ==========================================
     function buildExportPayload() {
       return {
-        appName: "smoking-tracker-pwa",
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        settings: {
-          packPrice: store.settings.packPrice,
-          sticksPerPack: store.settings.sticksPerPack
-        },
-        totalCount: store.logs.length,
-        logs: store.logs,
-        // 人間がJSONを開いた時にも見やすい日付・時刻リスト
-        readableLogs: store.logs.map((ts, i) => {
-          const d = new Date(ts);
-          return {
-            index: i + 1,
-            timestamp: ts,
-            date: getLocalDateKey(ts),
-            time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
-          };
-        })
+        packPrice: store.settings.packPrice,
+        sticksPerPack: store.settings.sticksPerPack,
+        logs: store.logs
       };
+    }
+
+    function getCompactJsonString() {
+      return JSON.stringify(buildExportPayload());
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      return `${(bytes / 1024).toFixed(1)} KB`;
     }
 
     function renderDataScreen() {
       const total = store.logs.length;
+      const jsonStr = getCompactJsonString();
+      const byteLen = new TextEncoder().encode(jsonStr).length;
+
       document.getElementById('data-total-count').textContent = `${total.toLocaleString()} 本`;
+      document.getElementById('data-byte-size').textContent = `(${formatBytes(byteLen)})`;
 
       if (total > 0) {
         const firstDate = getLocalDateKey(store.logs[0]).replace(/-/g, '/');
@@ -1951,10 +2021,9 @@
         document.getElementById('data-unsaved-diff').textContent = '定期的な書き出しをおすすめします';
       }
 
-      // プレビューが開いていれば中身も更新
       const previewBox = document.getElementById('json-preview-box');
       if (previewBox.classList.contains('open')) {
-        previewBox.textContent = JSON.stringify(buildExportPayload(), null, 2);
+        previewBox.textContent = jsonStr;
       }
     }
 
@@ -1966,51 +2035,46 @@
     }
 
     function exportJsonDownload() {
-      const payload = buildExportPayload();
-      const jsonStr = JSON.stringify(payload, null, 2);
-      const fileName = `smoking-records-${getLocalDateKey(Date.now())}.json`;
+      const jsonStr = getCompactJsonString();
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName;
+      a.download = EXPORT_FILENAME;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       recordExportSuccess();
-      showToast('JSONファイルを書き出しました');
+      showToast(`${EXPORT_FILENAME} を書き出しました`);
     }
 
     async function exportJsonShare() {
-      const payload = buildExportPayload();
-      const jsonStr = JSON.stringify(payload, null, 2);
-      const fileName = `smoking-records-${getLocalDateKey(Date.now())}.json`;
+      const jsonStr = getCompactJsonString();
 
       try {
-        const file = new File([jsonStr], fileName, { type: 'application/json' });
+        const file = new File([jsonStr], EXPORT_FILENAME, { type: 'application/json' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: '喫煙記録データ (JSON)'
+            title: EXPORT_FILENAME
           });
           recordExportSuccess();
-          showToast('JSONファイルを共有・保存しました');
+          showToast('JSONファイルを保存・共有しました');
           return;
         }
       } catch (err) {
         if (err && err.name === 'AbortError') return;
       }
 
-      // 非対応環境では標準ダウンロードへフォールバック
       exportJsonDownload();
     }
 
     function handleJsonFileSelect(event) {
       const file = event.target.files[0];
-      event.target.value = ''; // 同じファイルを再選択できるようにリセット
+      event.target.value = '';
       if (!file) return;
 
       const reader = new FileReader();
@@ -2027,11 +2091,12 @@
             .filter(n => Number.isFinite(n) && n > 0)
             .sort((a, b) => a - b);
 
+          // 新形式・旧形式のどちらのJSONでも価格設定を正しく読み込む
+          const packPrice = Number(parsed.packPrice ?? parsed.settings?.packPrice) || store.settings.packPrice;
+          const sticksPerPack = Number(parsed.sticksPerPack ?? parsed.settings?.sticksPerPack) || store.settings.sticksPerPack;
+
           pendingImportData = {
-            settings: {
-              packPrice: Number(parsed.settings?.packPrice) || store.settings.packPrice,
-              sticksPerPack: Number(parsed.settings?.sticksPerPack) || store.settings.sticksPerPack
-            },
+            settings: { packPrice, sticksPerPack },
             logs: validLogs
           };
 
@@ -2046,7 +2111,7 @@
             <strong>ファイル名：</strong>${file.name.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}<br>
             <strong>含まれる記録：</strong>${validLogs.length.toLocaleString()} 本<br>
             <strong>記録期間：</strong>${rangeText}<br>
-            <strong>価格設定：</strong>1箱 ${pendingImportData.settings.packPrice}円（${pendingImportData.settings.sticksPerPack}本）
+            <strong>価格設定：</strong>1箱 ${packPrice}円（${sticksPerPack}本）
           `;
           document.getElementById('import-confirm-modal').classList.add('open');
         } catch (err) {
@@ -2065,7 +2130,6 @@
         saveStore();
         showToast(`JSONから ${store.logs.length}本 を上書き復元しました`);
       } else if (mode === 'merge') {
-        // 既存の記録と重複しないタイムスタンプを統合
         const mergedSet = new Set([...store.logs, ...pendingImportData.logs]);
         store.logs = Array.from(mergedSet).sort((a, b) => a - b);
         saveStore();
@@ -2082,7 +2146,7 @@
       const arrow = document.getElementById('json-preview-arrow');
       const willOpen = !box.classList.contains('open');
       if (willOpen) {
-        box.textContent = JSON.stringify(buildExportPayload(), null, 2);
+        box.textContent = getCompactJsonString();
         box.classList.add('open');
         arrow.textContent = '▼';
       } else {
