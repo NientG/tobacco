@@ -137,10 +137,10 @@
 
     /* 0時跨ぎバナー */
     .midnight-banner {
-      background: rgba(155, 81, 224, 0.18);
-      border: 1px solid rgba(155, 81, 224, 0.5);
+      background: rgba(155, 81, 224, 0.2);
+      border: 1px solid rgba(155, 81, 224, 0.55);
       border-radius: 14px;
-      padding: 10px 14px;
+      padding: 9px 14px;
       width: 100%;
       max-width: 360px;
       text-align: center;
@@ -148,15 +148,15 @@
     }
     .midnight-banner-title {
       font-size: 12px;
-      color: #D8B4FE;
-      font-weight: 600;
+      color: #E9D5FF;
+      font-weight: 700;
     }
     .midnight-banner-val {
-      font-size: 14px;
-      font-weight: 700;
-      color: #FFFFFF;
-      margin-top: 3px;
-      line-height: 1.45;
+      font-size: 12px;
+      font-weight: 500;
+      color: #D1D5DB;
+      margin-top: 2px;
+      line-height: 1.4;
     }
 
     /* メインカウンター数字 */
@@ -173,7 +173,10 @@
       line-height: 1;
       letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
-      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s;
+    }
+    .counter-number.carry-over {
+      color: #E9D5FF;
     }
     .counter-number.pop {
       transform: scale(1.12);
@@ -181,7 +184,11 @@
     .counter-unit {
       font-size: 15px;
       color: var(--text-muted-dark);
-      margin-top: 6px;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+    .counter-unit.carry-over {
+      color: #D8B4FE;
     }
 
     /* 金額＆経過時間ステータス */
@@ -906,7 +913,7 @@
       </button>
 
       <div class="home-title-group">
-        <div class="home-title">今日の喫煙記録</div>
+        <div class="home-title" id="home-title-label">今日の喫煙記録</div>
         <div class="home-date" id="home-date-label"></div>
       </div>
 
@@ -921,14 +928,14 @@
 
     <!-- 0時跨ぎバナー -->
     <div id="midnight-banner" class="midnight-banner" style="display: none;">
-      <div class="midnight-banner-title">日付が変わりました（0時リセット）</div>
+      <div class="midnight-banner-title">0時を過ぎました（＋を押すと今日の1本目になります）</div>
       <div class="midnight-banner-val" id="midnight-banner-text"></div>
     </div>
 
     <!-- 中央カウント表示 -->
     <div class="counter-display-wrap">
       <div class="counter-number" id="today-count">0</div>
-      <div class="counter-unit">本目（今日）</div>
+      <div class="counter-unit" id="counter-unit-label">本目（今日）</div>
     </div>
 
     <!-- 金額＆経過時間 -->
@@ -937,7 +944,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M2 16h15v4H2zM19 16h3v4h-3zM17 12c0-2-2-2-2-4s2-2 2-4M21 12c0-2-2-2-2-4s2-2 2-4"/>
         </svg>
-        <span>今日の喫煙金額：<strong id="today-cost">0</strong>円</span>
+        <span id="home-cost-row">今日の喫煙金額：<strong id="today-cost">0</strong>円</span>
       </div>
       <div class="stat-row">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1467,40 +1474,54 @@
       const w = WEEKDAYS_JP[nowDate.getDay()];
       document.getElementById('home-date-label').textContent = `${y}年${m}月${d}日(${w})`;
 
+      // 今日の本数をカウント
       let todayCount = 0;
       let i = store.logs.length - 1;
       while (i >= 0 && getLocalDateKey(store.logs[i]) === todayKey) {
         todayCount++;
         i--;
       }
-      document.getElementById('today-count').textContent = todayCount;
-      document.getElementById('today-cost').textContent = calcCost(todayCount).toLocaleString();
 
-      // 0時を跨いで今日まだ0本のとき：前の日（直近喫煙日）の最終本数と間隔を表示
-      const banner = document.getElementById('midnight-banner');
+      // 前日（昨日）のキーと本数をカウント
+      const yesterdayDate = new Date(y, nowDate.getMonth(), d - 1);
+      const yesterdayKey = getLocalDateKey(yesterdayDate.getTime());
+      let yesterdayCount = 0;
+      let j = i;
+      while (j >= 0 && getLocalDateKey(store.logs[j]) === yesterdayKey) {
+        yesterdayCount++;
+        j--;
+      }
+
       const lastTs = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
-      if (todayCount === 0 && lastTs) {
-        const lastKey = getLocalDateKey(lastTs);
-        let prevCount = 0;
-        let j = store.logs.length - 1;
-        while (j >= 0 && getLocalDateKey(store.logs[j]) === lastKey) {
-          prevCount++;
-          j--;
-        }
-        const ld = new Date(lastTs);
-        const dayLabel = `${ld.getMonth() + 1}/${ld.getDate()}`;
+      const banner = document.getElementById('midnight-banner');
+      const countEl = document.getElementById('today-count');
+      const unitEl = document.getElementById('counter-unit-label');
+      const costRowEl = document.getElementById('home-cost-row');
+
+      // 00:00を超えても、今日「＋」を押すまで（todayCount === 0）は前日の喫煙回数を中央に表示
+      if (todayCount === 0 && yesterdayCount > 0) {
+        countEl.textContent = yesterdayCount;
+        countEl.classList.add('carry-over');
+        unitEl.textContent = `本（前日 ${yesterdayDate.getMonth() + 1}/${yesterdayDate.getDate()} の最終記録）`;
+        unitEl.classList.add('carry-over');
+        costRowEl.innerHTML = `前日の喫煙金額：<strong>${calcCost(yesterdayCount).toLocaleString()}</strong>円`;
+
         const prevLastInterval = store.logs.length >= 2
           ? formatDurationHM(lastTs - store.logs[store.logs.length - 2])
           : '初回記録';
-
         banner.style.display = 'block';
-        document.getElementById('midnight-banner-text').innerHTML =
-          `${dayLabel}の最終本数：${prevCount}本（最後の間隔：${prevLastInterval}）<br>` +
-          `<span style="font-size:12px; color:#E9D5FF;">現在までの経過間隔：${formatDurationHM(now - lastTs)}</span>`;
+        document.getElementById('midnight-banner-text').textContent =
+          `前日最後の間隔：${prevLastInterval} ／ 今日の記録はまだ0本です`;
       } else {
+        countEl.textContent = todayCount;
+        countEl.classList.remove('carry-over');
+        unitEl.textContent = '本目（今日）';
+        unitEl.classList.remove('carry-over');
+        costRowEl.innerHTML = `今日の喫煙金額：<strong>${calcCost(todayCount).toLocaleString()}</strong>円`;
         banner.style.display = 'none';
       }
 
+      // 経過時間は0時を跨いでも前の日の最後の1本からずっとカウントし続ける
       const elapsedEl = document.getElementById('elapsed-time');
       const subEl = document.getElementById('last-smoke-sub');
 
