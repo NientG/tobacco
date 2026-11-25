@@ -42,29 +42,32 @@
       user-select: text;
     }
 
-    html { height: 100%; background: var(--bg-dark); }
-    html.light-tab { background: var(--bg-light); }
+    html {
+      min-height: 100%;
+      background: var(--bg-dark);
+    }
+    html.light-tab {
+      background: var(--bg-light);
+    }
 
     body {
       margin: 0;
       padding: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
       background: transparent;
       color: var(--text-light);
-      position: fixed;
-      inset: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
 
     /* 画面コンテナ */
     .screen {
       display: none;
       flex: 1;
-      overflow-y: auto;
-      padding-top: calc(var(--safe-top) + 12px);
-      padding-bottom: calc(84px + var(--safe-bottom));
+      padding-top: calc(max(var(--safe-top), 14px) + 8px);
+      padding-bottom: calc(86px + max(var(--safe-bottom), 14px));
     }
     .screen.active > * {
       flex-shrink: 0;
@@ -82,7 +85,9 @@
       align-items: center;
       padding-left: 20px;
       padding-right: 20px;
-      min-height: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
     }
 
     .home-header {
@@ -210,7 +215,7 @@
 
     /* プラスボタン */
     .plus-btn-wrap {
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -242,6 +247,7 @@
       color: var(--text-dark);
       padding-left: 14px;
       padding-right: 14px;
+      min-height: 100dvh;
     }
 
     .page-header-bar {
@@ -734,26 +740,18 @@
       cursor: pointer;
     }
 
-    .bottom-nav::after {
-      content: "";
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      height: 300px;
-      background: #FFFFFF;
-    }
-
-    /* ボトムナビゲーション（5タブ構成） */
+    /* ボトムナビゲーション（5タブ構成・下部余白防止対応） */
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      height: calc(64px + var(--safe-bottom));
-      padding-bottom: var(--safe-bottom);
+      height: calc(64px + max(var(--safe-bottom), 14px));
+      padding-top: 4px;
+      padding-bottom: max(var(--safe-bottom), 14px);
       background: #FFFFFF;
       border-top: 1px solid #E5E7EB;
+      box-shadow: 0 60px 0 0 #FFFFFF;
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       z-index: 100;
@@ -870,10 +868,10 @@
     /* トースト通知 */
     .toast {
       position: fixed;
-      top: calc(var(--safe-top) + 16px);
+      top: max(calc(var(--safe-top) + 12px), 48px);
       left: 50%;
-      transform: translateX(-50%) translateY(-80px);
-      background: rgba(17, 24, 39, 0.92);
+      transform: translateX(-50%) translateY(-100px);
+      background: rgba(17, 24, 39, 0.94);
       color: #FFFFFF;
       padding: 10px 18px;
       border-radius: 999px;
@@ -883,6 +881,7 @@
       transition: transform 0.25s ease;
       pointer-events: none;
       white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
     .toast.show {
       transform: translateX(-50%) translateY(0);
@@ -1444,6 +1443,7 @@
       const themeMeta = document.getElementById('theme-color-meta');
       themeMeta.setAttribute('content', tab === 'home' ? '#1E2428' : '#F3F4F6');
       document.documentElement.classList.toggle('light-tab', tab !== 'home');
+      window.scrollTo(0, 0);
 
       if (tab === 'home') renderHome();
       if (tab === 'calendar') renderCalendar();
@@ -2091,7 +2091,6 @@
             .filter(n => Number.isFinite(n) && n > 0)
             .sort((a, b) => a - b);
 
-          // 新形式・旧形式のどちらのJSONでも価格設定を正しく読み込む
           const packPrice = Number(parsed.packPrice ?? parsed.settings?.packPrice) || store.settings.packPrice;
           const sticksPerPack = Number(parsed.sticksPerPack ?? parsed.settings?.sticksPerPack) || store.settings.sticksPerPack;
 
