@@ -1,5 +1,5 @@
-const CACHE_NAME = 'smoking-tracker-pwa-v3';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'smoking-tracker-pwa-v4';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,21 +19,33 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ネットワーク優先 → 失敗時キャッシュ（更新が確実に届き、オフラインも動く）
+// キャッシュ優先 + 裏で更新（stale-while-revalidate）
+// 電波が弱い場所でも即起動し、更新は次回起動時に反映される
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(req, { ignoreSearch: true }).then((cached) => {
+        const network = fetch(req)
+          .then((res) => {
+            // 200の完全なレスポンスのみキャッシュ（206等でputが例外になるのを防ぐ）
+            if (res && res.status === 200 && res.type === 'basic') {
+              cache.put(req, res.clone()).catch(() => {});
+            }
+            return res;
+          })
+          .catch(() => null);
+
+        if (cached) {
+          event.waitUntil(network);
+          return cached;
         }
-        return res;
+        return network.then((res) =>
+          res || (req.mode === 'navigate' ? cache.match('./index.html') : Response.error())
+        );
       })
-      .catch(() =>
-        caches.match(req).then((hit) => hit || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error()))
-      )
+    )
   );
 });
