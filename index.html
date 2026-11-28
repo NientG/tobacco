@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1E2428" id="theme-color-meta" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -60,6 +60,17 @@
       color: var(--text-light);
       display: flex;
       flex-direction: column;
+    }
+
+    /* iOSステータスバー対策：ライト画面でも上端を暗色にして白文字を読めるようにする */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--safe-top);
+      background: var(--bg-dark);
+      z-index: 50;
+      pointer-events: none;
     }
 
     /* 画面コンテナ */
@@ -1412,11 +1423,13 @@
       return `${hours}時間${String(mins).padStart(2, '0')}分${String(secs).padStart(2, '0')}秒`;
     }
 
+    let toastTimer = null;
     function showToast(msg) {
       const el = document.getElementById('toast');
       el.textContent = msg;
       el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 2200);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
     }
 
     // 0時を跨いで日付が変わった際の自動追従
@@ -1429,8 +1442,11 @@
           calYear = nowD.getFullYear();
           calMonth = nowD.getMonth();
         }
-        statsYear = nowD.getFullYear();
-        statsMonth = nowD.getMonth();
+        const prev = parseDateKey(lastKnownDateKey);
+        if (statsYear === prev.getFullYear() && statsMonth === prev.getMonth()) {
+          statsYear = nowD.getFullYear();
+          statsMonth = nowD.getMonth();
+        }
         lastKnownDateKey = currentKey;
       }
     }
@@ -1476,20 +1492,16 @@
 
       // 今日の本数をカウント
       let todayCount = 0;
-      let i = store.logs.length - 1;
-      while (i >= 0 && getLocalDateKey(store.logs[i]) === todayKey) {
-        todayCount++;
-        i--;
-      }
 
       // 前日（昨日）のキーと本数をカウント
       const yesterdayDate = new Date(y, nowDate.getMonth(), d - 1);
       const yesterdayKey = getLocalDateKey(yesterdayDate.getTime());
       let yesterdayCount = 0;
-      let j = i;
-      while (j >= 0 && getLocalDateKey(store.logs[j]) === yesterdayKey) {
-        yesterdayCount++;
-        j--;
+      for (let k = store.logs.length - 1; k >= 0; k--) {
+        const key = getLocalDateKey(store.logs[k]);
+        if (key === todayKey) todayCount++;
+        else if (key === yesterdayKey) yesterdayCount++;
+        else if (store.logs[k] < yesterdayDate.getTime()) break; // 昨日より前は走査不要
       }
 
       const lastTs = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
@@ -1540,8 +1552,11 @@
       document.getElementById('undo-btn').disabled = store.logs.length === 0;
     }
 
+    let lastAddTapAt = 0;
     function addSmokeNow() {
       const now = Date.now();
+      if (now - lastAddTapAt < 700) return; // 連打（ダブルタップ）による二重記録を防止
+      lastAddTapAt = now;
       syncDateRollover(now);
       const prevLast = store.logs.length > 0 ? store.logs[store.logs.length - 1] : null;
       store.logs.push(now);
@@ -1741,6 +1756,11 @@
     }
 
     function deleteLogAt(globalIdx) {
+      const ts = store.logs[globalIdx];
+      if (ts === undefined) return;
+      const d = new Date(ts);
+      const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      if (!window.confirm(`${hhmm} の記録を削除しますか？`)) return;
       store.logs.splice(globalIdx, 1);
       saveStore();
       renderCalendar();
@@ -1865,6 +1885,10 @@
         else if (statsYear === nowYear) effectiveMonths = nowMonth + 1;
 
         drawBarChart(monthlyTotals, 'year', effectiveMonths);
+
+        const unitLabel = yearUnit === 'month' ? '1ヶ月あたり' : '1日あたり';
+        document.getElementById('stat-count-heading').textContent = `喫煙本数（${unitLabel}）`;
+        document.getElementById('stat-cost-heading').textContent = `喫煙金額（${unitLabel}）`;
 
         if (statsYear > nowYear) {
           updateStatTables([]);
@@ -2112,8 +2136,10 @@
             .filter(n => Number.isFinite(n) && n > 0)
             .sort((a, b) => a - b);
 
-          const packPrice = Number(parsed.packPrice ?? parsed.settings?.packPrice) || store.settings.packPrice;
-          const sticksPerPack = Number(parsed.sticksPerPack ?? parsed.settings?.sticksPerPack) || store.settings.sticksPerPack;
+          const rawPrice = Number(parsed.packPrice ?? parsed.settings?.packPrice);
+          const rawSticks = Number(parsed.sticksPerPack ?? parsed.settings?.sticksPerPack);
+          const packPrice = (Number.isFinite(rawPrice) && rawPrice > 0) ? rawPrice : store.settings.packPrice;
+          const sticksPerPack = (Number.isFinite(rawSticks) && rawSticks > 0) ? rawSticks : store.settings.sticksPerPack;
 
           pendingImportData = {
             settings: { packPrice, sticksPerPack },
@@ -2196,7 +2222,7 @@
     function saveSettings() {
       const p = Number(document.getElementById('input-pack-price').value);
       const s = Number(document.getElementById('input-sticks-per-pack').value);
-      if (p <= 0 || s <= 0) {
+      if (!Number.isFinite(p) || !Number.isFinite(s) || p <= 0 || s <= 0) {
         showToast('正しい数値を入力してください');
         return;
       }
